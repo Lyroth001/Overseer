@@ -10,6 +10,8 @@ load_dotenv()
 # GUILD = os.getenv('DISCORD_GUILD')
 TOKEN = os.getenv("DISCORD_TOKEN")
 BUG_REPORTS_CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+BAN_CHANNEL_ID = int(os.getenv("BAN_CHANNEL_ID"))
+DISCUSSION_CHANNEL_ID = int(os.getenv("DISCUSSION_CHANNEL_ID"))
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 REPO_OWNER = os.getenv("REPO_OWNER")
 REPO_NAME = os.getenv("REPO_NAME")
@@ -23,12 +25,14 @@ intents.message_content = True
 
 # Initialize Bot and Denote The Command Prefix
 bot = commands.Bot(command_prefix="!", allowed_mentions=discord.AllowedMentions(everyone=True), intents=intents)
-
+adminDiscussion = None
 
 # Runs when Bot Succesfully Connects
 @bot.event
 async def on_ready():
-    print(f'{bot.user} succesfully logged in!')
+    global adminDiscussion
+    print(f'{bot.user} succesfully logged in!'
+    adminDiscussion = await bot.get_channel(DISCUSSION_CHANNEL_ID)
     # channel = bot.get_channel(1041720326125518878)
     # await channel.send("Hello")
 
@@ -41,33 +45,24 @@ async def on_message(message):
     await bot.process_commands(message)
 @bot.event
 async def on_thread_create(thread):
+    global adminDiscussion
     if thread.channel.id == BUG_REPORTS_CHANNEL_ID:
-        issueUrl = await createGithubIssue(thread.name, thread.starter_message.content)
+        issueUrl = await createGithubIssue(thread)
         if issueUrl is not None:
             await thread.send(f"Created issue on GitHub: {issueUrl}")
+    elif thread.channel.id == BAN_CHANNEL_ID:
+        await adminDiscussion.create_thread(name=f"{thread.name} appeal discussion", message = f"Related ban appeal: {thread.jump_url}.\n This thread was created automatically by Overseer, yell at Lyroth if its broken")
 
-
-
-# sends description of each command
-#@bot.command()
-#async def commands(ctx):
-#    print("Received")
-#    await ctx.send(f"""$dance: does a fun little dance (no stuff needed)
-#$uwu: OWO-uuu wike thaw??!???!!
-#$tip: like bot? add a fake number to it. Just type a number (without sign)
-#simp: call someone out for simping, @ them after the command
-#ping <@445268344015290378> if bots down or you want something added and I'll see what I can do lol""")
-
-async def createGithubIssue(postTitle, postBody, postAuthor):
-    if postTitle == "" or postBody == "":
+async def createGithubIssue(thread):
+    if thread.name == "" or thread.starter_message.content == "":
         return
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
     data = {
-        "title": postTitle,
-        "body": f"{postBody}\n Reported by {postAuthor}.\n This issue was created automatically by Overseer, yell at Lyroth if its broken"
+        "title": thread.name,
+        "body": f"{thread.starter_message.content}\n Reported by {thread.starter_message.author}.\n [Linked discord discussion]({thread.jump_url}).\n This issue was created automatically by Overseer, yell at Lyroth if its broken"
     }
     response = requests.post(GITHUB_API_URL, headers=headers, json=data)
     if response.status_code == 201:
