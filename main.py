@@ -31,11 +31,8 @@ adminDiscussion = None
 @bot.event
 async def on_ready():
     global adminDiscussion
-    print(f'{bot.user} succesfully logged in!'
+    print(f'{bot.user} succesfully logged in!')
     adminDiscussion = await bot.get_channel(DISCUSSION_CHANNEL_ID)
-    # channel = bot.get_channel(1041720326125518878)
-    # await channel.send("Hello")
-
 
 # sends messages when detecting certain words
 @bot.event
