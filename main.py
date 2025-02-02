@@ -9,7 +9,7 @@ load_dotenv()
 
 # GUILD = os.getenv('DISCORD_GUILD')
 TOKEN = os.getenv("DISCORD_TOKEN")
-BUG_REPORTS_CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+BUG_REPORTS_CHANNEL_ID = int(os.getenv("BUG_CHANNEL_ID"))
 BAN_CHANNEL_ID = int(os.getenv("BAN_CHANNEL_ID"))
 DISCUSSION_CHANNEL_ID = int(os.getenv("DISCUSSION_CHANNEL_ID"))
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -32,7 +32,7 @@ adminDiscussion = None
 async def on_ready():
     global adminDiscussion
     print(f'{bot.user} succesfully logged in!')
-    adminDiscussion = await bot.get_channel(DISCUSSION_CHANNEL_ID)
+    adminDiscussion = bot.get_channel(DISCUSSION_CHANNEL_ID)
 
 # sends messages when detecting certain words
 @bot.event
@@ -43,23 +43,29 @@ async def on_message(message):
 @bot.event
 async def on_thread_create(thread):
     global adminDiscussion
-    if thread.channel.id == BUG_REPORTS_CHANNEL_ID:
+    if thread.parent_id == BUG_REPORTS_CHANNEL_ID:
         issueUrl = await createGithubIssue(thread)
         if issueUrl is not None:
             await thread.send(f"Created issue on GitHub: {issueUrl}")
-    elif thread.channel.id == BAN_CHANNEL_ID:
+    elif thread.parent_id == BAN_CHANNEL_ID:
         await adminDiscussion.create_thread(name=f"{thread.name} appeal discussion", message = f"Related ban appeal: {thread.jump_url}.\n This thread was created automatically by Overseer, yell at Lyroth if its broken")
 
 async def createGithubIssue(thread):
-    if thread.name == "" or thread.starter_message.content == "":
+    if thread.name == "":
         return
+    if thread.starter_message is None:
+        mainBody = "Main body could not be retrieved"
+        author = "Author could not be retrieved"
+    else:
+        mainBody = thread.starter_message.content
+        author = thread.starter_message.author
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
     data = {
         "title": thread.name,
-        "body": f"{thread.starter_message.content}\n Reported by {thread.starter_message.author}.\n [Linked discord discussion]({thread.jump_url}).\n This issue was created automatically by Overseer, yell at Lyroth if its broken"
+        "body": f"{mainBody}\n Reported by {author}.\n [Linked discord discussion]({thread.jump_url}).\n This issue was created automatically by Overseer, yell at Lyroth if its broken"
     }
     response = requests.post(GITHUB_API_URL, headers=headers, json=data)
     if response.status_code == 201:
