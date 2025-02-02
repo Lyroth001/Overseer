@@ -54,8 +54,13 @@ async def createGithubIssue(thread):
     if thread.name == "":
         return
     if thread.starter_message is None:
-        mainBody = "Main body could not be retrieved"
-        author = "Author could not be retrieved"
+        message = await thread.fetch_message(thread.id)
+        if message is None:
+            mainBody = "Main body could not be retrieved"
+            author = "Author could not be retrieved"
+        else:
+            mainBody = message.content
+            author = message.author
     else:
         mainBody = thread.starter_message.content
         author = thread.starter_message.author
